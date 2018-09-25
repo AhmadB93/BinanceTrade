@@ -1,0 +1,600 @@
+<html>
+    <body>
+    </body>
+    <script type="text/javascript" src="crypto-js.js"></script>
+    <script>
+    //C:\Users\ahmad.bannan\Desktop\Websockets
+    //https://api.binance.com/api/v3/order?symbol=LTCBTC&side=BUY&type=LIMIT&timeInForce=GTC&quantity=1&price=0.1&recvWindow=5000&timestamp=1499827319559&signature=c8db56825ae71d6d79447849e617115f4a920fa2acdcab2b053c4b2838bd6b71'
+        var aKey = 'D20RACtrATmMoPa9VXCZgZw2ruNfGfx6Mir9HYWYc2qXOcBKtooHk5NvLyBcxoAW';
+        var sKey = 'VPrdbV8vTUoLMMHPt5NxLGThVcdbTFG3cGCoH8i66y5qLReBsDL3vgsN4joxhuc9';
+        var bUrl= 'https://api.binance.com';
+        var chalk = require('chalk');
+                
+        var endPointAccount = '/api/v1/klines';
+        
+        var buyCond1Array = [];
+        var buy1A = [];
+        var buy2A = [];
+        var buy3A = [];
+        var high4buyArray = [];
+        var test = 1000000000000000000000;
+        var sellCond1Array = [];
+        var BuyCondition=false;
+        var SellCondition = false;
+        ///////////////////////type//////////////////////////
+        var time;
+        var open;
+        var close;
+        var high;
+        var low;
+        //////////////////////global/////////////////////////
+        var limit = 1000;
+        var type;
+        ///////////////////////SMA///////////////////////////
+        var SMAPeriod = 50;
+        var SMAoffset = 1;
+        ///////////////////////EMA///////////////////////////
+        var EMAPeriod;
+        var EMASampleSize = 0;
+        var EMAoffset = 0;
+        var EMAarray = [];
+        var EMAx2Array = [];
+        var EMAx3Array = [];
+        ///////////////////////DEMA//////////////////////////
+        var DEMAPeriod ;
+        var DEMASampleSize = 0;
+        var DEMAarray = [];
+        ///////////////////////TEMA//////////////////////////
+        var TEMAPeriod;
+        var TEMASampleSize = 0;
+        var TEMAarray = [];
+        /////////////////////////////////////////////////////
+        var dataStringAccount = 'symbol=BNBUSDT&interval=30m&limit='+limit;
+        var counter =0;
+        
+        var signatureAccount =CryptoJS.HmacSHA256(dataStringAccount,sKey).toString(CryptoJS.enc.Hex);
+        var urlAccount = bUrl+endPointAccount+'?'+dataStringAccount;//+'&signature='+signatureAccount;
+        
+        var requestAccount = new XMLHttpRequest();
+        requestAccount.open('GET',urlAccount,true);
+        requestAccount.setRequestHeader('X-MBX-APIKEY',aKey);
+
+        requestAccount.onload = function(){
+            ourData1 = JSON.parse(requestAccount.responseText);
+            //console.log(ourData1[0][0]);
+            //console.log(ourData1);
+            //////////////////////////////////////////////////////////////////
+            time = timeF(ourData1);
+            console.log("Time");
+            console.log(time);
+            open = openF(ourData1);
+            console.log("open");
+            console.log(open);
+            close = closeF(ourData1);
+            console.log("close");
+            console.log(close);
+            high = highF(ourData1);
+            console.log("high");
+            console.log(high);
+            low = lowF(ourData1);
+            console.log("low");
+            console.log(low);
+            type= close;
+            console.log("----------------------------------------------------------------------");
+            
+            ////////////////////////////////////SMA_33//////////////////////////////////////////
+            var SMA_33 = SMA(type,33,0);
+            var SMA_33_o1 = SMA(type,33,1);
+            console.log("SMA_33"+SMA_33);
+            console.log("SMA_33_o1"+SMA_33_o1);
+            ////////////////////////////////////EMA_30//////////////////////////////////////////
+            EMAarray=[];
+            EMAPeriod=30;
+            EMASampleSize = ourData1.length-EMAPeriod;
+            EMA(type,EMASampleSize,EMAPeriod,"EMA");
+            var EMA_30 = EMAarray;
+            ////////////////////////////////////DEMA_9//////////////////////////////////////////
+            EMAarray=[];
+            DEMAarray=[];
+            DEMAPeriod=9;
+            DiEMA(type,EMASampleSize,DEMAPeriod);
+            var DEMA_9 = DEMAarray;
+            ////////////////////////////////////DEMA_42/////////////////////////////////////////
+            EMAarray=[];
+            DEMAarray=[];
+            DEMAPeriod=42;
+            DiEMA(type,EMASampleSize,DEMAPeriod);
+            var DEMA_42 = DEMAarray;
+            ////////////////////////////////////TEMA_44/////////////////////////////////////////
+            EMAarray=[];
+            DEMAarray=[];
+            TEMAarray=[];
+            TEMAPeriod=44;
+            TriEMA(type,EMASampleSize,TEMAPeriod);
+            var TEMA_44 = TEMAarray;
+            
+            console.log("EMA_30="+EMA_30[EMA_30.length-1]);
+            console.log(EMA_30);
+            console.log("DEMA_9="+DEMA_9[DEMA_9.length-1]);
+            console.log(DEMA_9);
+            console.log("DEMA_42="+DEMA_42[DEMA_42.length-1]);
+            console.log(DEMA_42);
+            console.log("TEMA_44="+TEMA_44[TEMA_44.length-1]);
+            console.log(TEMA_44);
+            
+            ////////////////////////////////////Buys/////////////////////////////////////////
+            var b1=0,s1=0;
+            var inc=0;
+            var iff = 2;
+            for(var i=0;i<=limit;i++){
+                if(DEMA_42[DEMA_42.length-i-1]==null || DEMA_9[DEMA_9.length-i-1]==null || TEMA_44[TEMA_44.length-i-1]==null || EMA_30[EMA_30.length-i-1]==null){
+                    break;
+                }
+                
+                var Buy1 = TEMA_44[TEMA_44.length-i]>DEMA_42[DEMA_42.length-i] && TEMA_44[TEMA_44.length-i-1]<DEMA_42[DEMA_42.length-i-1];
+                var Buy2 = DEMA_9[DEMA_9.length-i]>DEMA_42[DEMA_42.length-i] && DEMA_9[DEMA_9.length-i-1]<DEMA_42[DEMA_42.length-i-1];
+                var Buy3 = SMA(type,33,0+inc) > SMA(type,33,1+inc);
+                inc++;
+                ////////////////////////////////////Sells/////////////////////////////////////////
+                var Sell1 = TEMA_44[TEMA_44.length-i]<DEMA_42[DEMA_42.length-i] && TEMA_44[TEMA_44.length-i-1]>DEMA_42[DEMA_42.length-i-1];
+                var Sell2 = TEMA_44[TEMA_44.length-i]<DEMA_42[DEMA_42.length-i] && (close[limit-i] - open[limit-i])<0;
+                var Sell3 = TEMA_44[TEMA_44.length-i]<EMA_30[EMA_30.length-i] && TEMA_44[TEMA_44.length-i-1]<EMA_30[EMA_30.length-i-1] && TEMA_44[TEMA_44.length-i-2]<EMA_30[EMA_30.length-i-2] && TEMA_44[TEMA_44.length-i]>DEMA_42[DEMA_42.length-i] && TEMA_44[TEMA_44.length-i-1]>DEMA_42[DEMA_42.length-i-1] && TEMA_44[TEMA_44.length-i-2]>DEMA_42[DEMA_42.length-i-2] && TEMA_44[TEMA_44.length-i]<TEMA_44[TEMA_44.length-i-1] && TEMA_44[TEMA_44.length-i-1] < TEMA_44[TEMA_44.length-i-2];
+                
+                if(Buy1){
+                    buy1A = time[limit-i];
+                }
+                if(Buy2){
+                    buy2A = time[limit-i];
+                }
+                if(Buy3){
+                    buy3A = time[limit-i];
+                }
+                //
+                //if(Sell1){
+                //    console.log("Sell1");
+                //    console.log(time[limit-i]);
+                //}
+                //if(Sell2){
+                //    console.log("Sell2");
+                //    console.log(time[limit-i]);
+                //}
+                //if(Sell3){
+                //    console.log("Sell3");
+                //    console.log(time[limit-i]);
+                //}
+                SellCondition = Sell1 || Sell2 || Sell3;
+                BuyCondition  = (Buy1 || Buy2) && Buy3 && !(SellCondition) ;
+                
+                
+                
+                if(BuyCondition){
+                    high4buyArray[b1++]=high[limit-i-1];
+                    test=high[limit-i-1]; 
+                    console.log("test");
+                    console.log(test);
+                    console.log("Buy");
+                    console.log(time[limit-i-1]);
+                    buyCond1Array[b1]=time[limit-i-1];
+                    //for(var l=limit-i+1;l<limit-1;l++){
+                    //    if(iff!=0){
+                    //        iff--;
+                    //        console.log("ssssssssssssssssssssssssssssssssssssss");
+                    //        console.log(limit-i);
+                    //    }
+                    //    if(close[l]>test){
+                    //        buyCond1Array[b1]=time[l];
+                    //    }
+                    //}
+                }
+                
+                //
+                if(SellCondition){
+                    sellCond1Array[s1++]=time[i];
+                    //console.log("Sell");
+                    //console.log(time[limit-i]);
+                }
+                    
+            }            
+            console.log("=====================================================================");
+            console.log(buyCond1Array);
+            console.log("==============================");
+            console.log(high4buyArray);
+            console.log("=====================================================================");
+            console.log(sellCond1Array);
+            
+        }
+        requestAccount.send();
+        
+        /*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*//*>=-=<*/
+        var minutes = 5, the_interval = minutes * 60 * 1000;
+        setInterval(function() {
+            console.log("I am doing my "+minutes+" minutes check");
+            if(BuyCondition && !(SellCondition)){
+                console.log("BUY");
+                var endPointBuy = '/api/v3/order';
+                var orderBuy = 'symbol=BNBUSDT&side=BUY&type=LIMIT&timeInForce=GTC&quantity=1&price=14';
+                var dataStringBuy = orderBuy+'&recvWindow=5000&timestamp='+Date.now();
+                
+                var signatureBuy =CryptoJS.HmacSHA256(dataStringBuy,sKey).toString(CryptoJS.enc.Hex);
+                var requestBuy = new XMLHttpRequest();
+                var urlBuy = bUrl+endPointBuy+'?'+dataStringBuy+'&signature='+signatureBuy;
+                requestBuy.open('POST',urlBuy,true);
+                requestBuy.setRequestHeader('X-MBX-APIKEY',aKey);
+                requestBuy.onload = function(){
+                    ourData = JSON.parse(requestBuy.responseText);
+                    console.log(ourData);
+                }
+                requestBuy.send();
+            }
+            if(SellCondition)
+                console.log("SELL");
+            // do your stuff here
+        }, the_interval);
+        
+        
+        
+        
+        
+        
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                /////////////////////////////
+                                                                /////Standerd Deviation//////
+                                                                /////////////////////////////
+        
+        function Highest(data,period){
+            var value = data[data.length-1];
+            for(var i=data.length-2;i>data.length-1-period;i--){
+                if(parseFloat(value) < parseFloat(data[i])){
+                    value=data[i];
+                }
+            }
+            console.log("Higest="+value);
+            return value;
+        }
+        
+        function Lowest(data,period){
+            var value = data[data.length-1];
+            for(var i=data.length-2;i>data.length-1-period;i--){
+                if(parseFloat(value) > parseFloat(data[i])){
+                    value=data[i];
+                }
+            }
+            console.log("Lowest="+value);
+            return value;
+        }
+        
+         function average(data,period){
+             var sum = 0;
+            for(var i=data.length-1;i>data.length-1-period;i--){
+                sum += parseFloat(data[i]);
+            }
+            sum /= period;
+            console.log(sum);
+            return sum;
+        }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                       //////////////
+                                                                       /////SMA//////
+                                                                       //////////////
+        function SMA(data,timePeriods,offset) {
+            var names = 0;
+            var count = 0;
+            for (var i = data.length-1-offset; i > data.length-1-timePeriods-offset; i--) {
+                names += parseFloat(data[i]);
+                count++;
+            }
+            names /= timePeriods;
+            return names;
+        }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                        //////////////
+                                                                        /////EMA//////
+                                                                        //////////////
+        function SMAforEMA(dataObjArray,timePeriods,type){
+            var names = 0;
+            if(type=="EMA"){
+                start = EMAPeriod;
+            }else if(type=="DEMA"){
+                start = DEMAPeriod;
+            }else if(type=="TEMA"){
+                start = TEMAPeriod;
+            }
+            var end = 0;
+            for(var i = start-1; i >= end; i--){
+                names += parseFloat(dataObjArray[i]);
+            }
+            
+            names /= timePeriods;
+            if(type=="EMA"){
+                EMAarray[0]=names;
+            }else if(type=="DEMA"){
+                EMAx2Array[0]=names;
+            }else if(type=="TEMA"){
+                EMAx3Array[0]=names;
+            }
+            
+            return names;
+        }
+        
+        function EMA(dataObjArray,sampleSize,timePeriods,type){
+            var result = false;
+            var alpha = parseFloat(2.0 / (1 + timePeriods));
+            if(sampleSize==0){
+                result=SMAforEMA(dataObjArray,timePeriods,type);
+                return result;
+            }else {
+                EMAData = EMA(dataObjArray,sampleSize-1,timePeriods,type);
+                result = (parseFloat(dataObjArray[sampleSize+timePeriods-1])-EMAData)*alpha + EMAData;
+                if(type=="EMA"){
+                    EMAarray[sampleSize] = result;
+                }else if(type=="DEMA"){
+                    EMAx2Array[sampleSize] = result;
+                }else if(type=="TEMA"){
+                    EMAx3Array[sampleSize] = result;
+                }
+                return result;
+            }
+        }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                          ///////////////
+                                                                          /////DEMA//////
+                                                                          ///////////////     
+        function DiEMA(data,sampleSize,timePeriods) {
+            var result = false;
+            EMAPeriod=DEMAPeriod; 
+            EMASampleSize=ourData1.length-timePeriods;
+            EMA(data,EMASampleSize,timePeriods,"EMA");//1st Function
+            DEMASampleSize = EMAarray.length-timePeriods+1;
+            EMA(EMAarray,DEMASampleSize,timePeriods,"DEMA");//2nd Function
+            for(var i=0;i<DEMASampleSize;i++){
+                DEMAarray[i]=2*EMAarray[i+timePeriods-1]-EMAx2Array[i];
+                result=DEMAarray[i];
+            }
+            return result;
+        }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                            ///////////////
+                                                                            /////TEMA//////
+                                                                            ///////////////        
+        function TriEMA(data,sampleSize,timePeriods) {
+            var result = false;
+            EMAarray = [];
+            EMAx2Array = [];
+            EMAPeriod=TEMAPeriod;
+            DEMAPeriod=TEMAPeriod;
+            TEMASampleSize =ourData1.length-timePeriods;
+            EMA(data,TEMASampleSize,timePeriods,"EMA");
+            TEMASampleSize1 = EMAarray.length-timePeriods;
+            EMA(EMAarray,TEMASampleSize1,timePeriods,"DEMA");//2nd Function
+            TEMASampleSize2 = EMAx2Array.length-timePeriods+1;
+            EMA(EMAx2Array,TEMASampleSize2,timePeriods,"TEMA");//3nd Function
+            for(var i=0;i < TEMASampleSize2; i++){
+                TEMAarray[i]=(3*EMAarray[i+2*timePeriods-2]-3*EMAx2Array[i+timePeriods-1])+EMAx3Array[i];
+                result = TEMAarray[i];
+            }
+            return result;
+        }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                            ///////////////
+                                                                            /////Types/////
+                                                                            //////////////// 
+        function timeF(array){
+            var times = [];
+            for(i=array.length-1;i>=0;i--){
+                var temp = new Date(array[i][0]);
+                times[i] = temp.getDate()+"/"+(temp.getMonth()+1)+"/"+(temp.getFullYear())+" "+(temp.getHours())+":"+(temp.getMinutes())+":"+(temp.getSeconds());
+            }
+            return times;
+        }                                                                   
+        
+        function openF(array){
+            var openPrice = [];
+            for(i=array.length-1;i>=0;i--){
+                openPrice[i] = array[i][1];
+            }
+            return openPrice;
+        }
+        
+        function closeF(array){
+            var closePrice = [];
+            for(i=array.length-1;i>=0;i--){
+                closePrice[i] = array[i][4];
+            }
+            return closePrice;
+        }
+        
+        function highF(array){
+            var highPrice = [];
+            for(i=array.length-1;i>=0;i--){
+                highPrice[i] = array[i][2];
+            }
+            return highPrice;
+        }
+        
+        function lowF(array){
+            var lowPrice = [];
+            for(i=array.length-1;i>=0;i--){
+                lowPrice[i] = array[i][3];
+            }
+            return lowPrice;
+        }
+        
+        function financial(x) {
+            return Number.parseFloat(x).toFixed(4);
+        }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                            ///////////////
+                                                                            /////Types/////
+                                                                            ///////////////  
+
+    
+        //console.log("SMA_"+SMAPeriod+"="+financial(SMA(type,SMAPeriod))+"  from:"+parseFloat(limit-SMAPeriod-SMAoffset)+"->to:"+parseFloat(limit-1-SMAoffset)+" with SMAoffset:"+parseFloat(SMAoffset));
+            //console.log("----------------------------------------------------------------------");
+            /*
+            EMAPeriod = 20;
+            EMASampleSize = ourData1.length-EMAPeriod;
+            console.log("EMA_"+EMAPeriod+"="+financial(EMA(type,EMASampleSize,EMAPeriod,"EMA")));
+            
+            console.log("=============================================SELL CONDITION1================================================");
+            
+            DEMAPeriod=42;
+            EMAarray=[];
+            DEMAarray=[];
+            TEMAarray=[];
+            console.log("DEMA_"+DEMAPeriod+"="+financial((DiEMA(type,EMASampleSize,DEMAPeriod))));
+            var DEMA_42 = DEMAarray;
+            console.log(DEMA_42);
+            TEMAPeriod=44;
+            console.log("TEMA_"+TEMAPeriod+"="+financial(TriEMA(type,TEMASampleSize,TEMAPeriod)));
+            var TEMA_44 = TEMAarray;
+            console.log(TEMA_44);
+                    
+            var start=1;
+            for(var i=start;i<=limit;i++){
+                if(TEMAarray[TEMAarray.length-i-1]==null || DEMAarray[DEMAarray.length-i-1]==null)
+                    break;
+                if(TEMA_44[TEMA_44.length-i]<DEMA_42[DEMA_42.length-i] && TEMA_44[TEMA_44.length-i-1]>DEMA_42[DEMA_42.length-i-1]){
+                    console.log(i+" "+TEMA_44[TEMA_44.length-i]+" "+DEMA_42[DEMA_42.length-i-1]);
+                    console.log(time[limit-i]);
+                }
+            }
+            
+           console.log("=============================================SELL CONDITION2================================================");
+            
+            for(var i=start;i<=limit;i++){
+                if(TEMAarray[TEMAarray.length-i-1]==null || DEMAarray[DEMAarray.length-i-1]==null)
+                    break;
+                if(TEMA_44[TEMA_44.length-i]<DEMA_42[DEMA_42.length-i] && (close[limit-i] - open[limit-i])<0){
+                    console.log(i+" "+close[limit-i] +" "+open[limit-i]);
+                    console.log(i+" "+TEMAarray[TEMAarray.length-i]+" "+DEMAarray[DEMAarray.length-i-1]);
+                    console.log(time[limit-i]);
+                }
+            }
+            
+            console.log("=============================================SELL CONDITION3================================================");
+            EMAarray=[];
+            EMAPeriod=30;
+            EMASampleSize = ourData1.length-EMAPeriod;
+            EMA(type,EMASampleSize,EMAPeriod,"EMA");
+            EMA_30 = EMAarray;
+            
+            for(var i=1;i<=limit;i++){
+                if(TEMA_44[TEMA_44.length-i-1]==null || EMA_30[EMA_30.length-i-1]==null || DEMA_42[DEMA_42.length-i-1]==null){
+                    console.log(i);
+                    console.log(TEMA_44[TEMA_44.length-1-i]);
+                    console.log(EMA_30[EMA_30.length-1-i]);
+                    console.log(DEMA_42[DEMA_42.length-1-i]);
+                    break;
+                }
+                
+                if(TEMA_44[TEMA_44.length-i]<EMA_30[EMA_30.length-i] && TEMA_44[TEMA_44.length-i-1]<EMA_30[EMA_30.length-i-1] && TEMA_44[TEMA_44.length-i-2]<EMA_30[EMA_30.length-i-2] && TEMA_44[TEMA_44.length-i]>DEMA_42[DEMA_42.length-i] && TEMA_44[TEMA_44.length-i-1]>DEMA_42[DEMA_42.length-i-1] && TEMA_44[TEMA_44.length-i-2]>DEMA_42[DEMA_42.length-i-2] && TEMA_44[TEMA_44.length-i]<TEMA_44[TEMA_44.length-i-1] && TEMA_44[TEMA_44.length-i-1] < TEMA_44[TEMA_44.length-i-2]){
+                    console.log(i+" "+close[limit-i] +" "+open[limit-i]);
+                    console.log(i+" "+TEMA_44[TEMA_44.length-i]+" "+EMA_30[EMA_30.length-i]+" "+DEMA_42[DEMA_42.length-i]);
+                    console.log(time[limit-i]);
+                }
+            }
+            
+            //BUY CNDITION1
+            console.log("=============BUY CONDITION1================");
+            
+            DEMAPeriod=42; 
+            EMAarray=[];
+            DEMAarray=[];
+            console.log("DEMA_"+DEMAPeriod+"="+financial((DiEMA(type,EMASampleSize,DEMAPeriod))));
+            console.log(DEMAarray);
+            TEMAPeriod=44;
+            TEMAarray=[];
+            console.log("TEMA_"+TEMAPeriod+"="+financial(TriEMA(type,TEMASampleSize,TEMAPeriod)));
+            console.log(TEMAarray);
+                    
+            var start=1;
+            for(var i=start;i<=limit;i++){
+                if(TEMAarray[TEMAarray.length-i-1]==null || DEMAarray[DEMAarray.length-i-1]==null)
+                    break;
+                if(TEMAarray[TEMAarray.length-i]>DEMAarray[DEMAarray.length-i] && TEMAarray[TEMAarray.length-i-1]<DEMAarray[DEMAarray.length-i-1]){
+                    console.log(i+" "+TEMAarray[TEMAarray.length-i]+" "+DEMAarray[DEMAarray.length-i-1]);
+                    console.log(time[limit-i]);
+                }
+            }
+            
+            //BUY CNDITION2
+            console.log("=============BUY CONDITION2================");
+            DEMAPeriod=42;
+            EMAarray=[];
+            DEMAarray=[];
+            console.log("DEMA_"+DEMAPeriod+"="+financial((DiEMA(type,EMASampleSize,DEMAPeriod))));
+            var DEMA_42 = DEMAarray;
+            console.log(DEMA_42);
+            DEMAarray=[];
+            DEMAPeriod=9;
+            console.log("DEMA_"+DEMAPeriod+"="+financial((DiEMA(type,EMASampleSize,DEMAPeriod))));
+            var DEMA_9 = DEMAarray;
+            console.log(DEMA_9);
+                        
+            var start=1;
+            
+            for(var i=start;i<=limit;i++){
+                if(DEMA_42[DEMA_42.length-i-1]==null || DEMA_9[DEMA_9.length-i-1]==null){
+                    break;
+                }
+                if(DEMA_9[DEMA_9.length-i]>DEMA_42[DEMA_42.length-i] && DEMA_9[DEMA_9.length-i-1]<DEMA_42[DEMA_42.length-i-1]){
+                    console.log(i+" "+DEMA_9[DEMA_9.length-i]+" "+DEMA_42[DEMA_42.length-i-1]);
+                    console.log(time[limit-i]);
+                }
+            }
+            
+            //BUY CNDITION3
+            console.log("=============BUY CONDITION3================");
+            // Calculate BB
+            
+           // SimpleLinearRegression(close,42);
+            
+            
+            //SELL CNDITION1*/
+        
+          /*function SimpleLinearRegression(data,period){            
+            var fstAvg = 0;
+            var secAvg = 0;
+            var result = 0;
+            
+            fstAvg = (parseFloat(Highest(high,period))+parseFloat(Lowest(low,period)))/2;
+            secAvg = (parseFloat(fstAvg)+parseFloat(SMA(data,period)))/2;
+            result = data[data.length-1] - secAvg;
+
+            console.log(result);
+            
+            /*
+            for(var i=data.length-1;i>data.length-1-period;i--){
+                mean += parseFloat(data[i]);
+            }
+            mean /= period;
+            var temp = 0;
+            var result=0;
+            for(var i=data.length-1;i>data.length-1-period;i--){
+                temp = Math.pow(data[i]-mean,2);
+                console.log(data[i]);
+                console.log(mean);
+                console.log(data[i]-mean);
+                result += temp;
+            }
+            result /= period;
+            result =Math.sqrt(result);
+            console.log(result);
+            return result;
+        }*/
+    
+    </script>
+    <body>
+        <svg width="400" height="110">
+            <rect width="300" height="100" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+        </svg>
+    </body>
+    
+</html>
